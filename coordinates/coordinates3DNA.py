@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pandas as pd
 
-# todo opravit for in range na enumerate
+# todo opravit for in range na enumerate nebo zip
 class Coordinates3DNA(Coordinates):
 
     def get_hinge_axis_array(self):
