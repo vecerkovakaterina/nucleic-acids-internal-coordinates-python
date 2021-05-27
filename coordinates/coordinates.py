@@ -29,3 +29,6 @@ class Coordinates(ABC):
     @abstractmethod
     def run(self):
         pass
+
+    def write_to_output_files(self):
+        pass
