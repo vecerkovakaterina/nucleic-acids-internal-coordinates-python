@@ -3,23 +3,36 @@ import numpy as np
 
 
 class CoordinatesCurves(Coordinates):
-    def get_rotation_matrices(self, frames_1, frames_2):
+    """A class to represent internal coordinates according to the Curves+ definition."""
+
+    @staticmethod
+    def get_rotation_matrices(frames_1, frames_2):
+        """Takes two arrays of frames.
+        Returns an array of rotation matrices."""
         rm = [np.matmul(b1, b2.T) for b1, b2 in zip(frames_1, frames_2)]
         return rm
 
     def get_theta(self, rotation_matrices):
+        """Takes an array of rotation matrices.
+        Returns an array of rotation angles."""
         theta_array = [
             np.degrees(np.arccos((np.trace(x) - 1) / 2)) for x in rotation_matrices
         ]
         return theta_array
 
-    def get_eigenvectors_nonsymmetric(self, rotation_matrices):
+    @staticmethod
+    def get_eigenvectors_nonsymmetric(rotation_matrices):
+        """Takes an array of rotation matrices.
+        Returns an array of eigenvectors."""
         w = []
         for x in rotation_matrices:
             w.append([x[1, 2] - x[2, 1], x[2, 0] - x[0, 2], x[0, 1] - x[1, 0]])
         return w
 
-    def get_rotation_matrices_rodrigues(self, rotation_angle, u):
+    @staticmethod
+    def get_rotation_matrices_rodrigues(rotation_angle, u):
+        """Takes an array of rotation angles and unit rotation vectors.
+        Returns an array of rotation matrices."""
         q = []
 
         id_matrix = np.identity(3)
@@ -39,7 +52,9 @@ class CoordinatesCurves(Coordinates):
             )
         return q
 
-    def gram_schmidt_columns(self, matrix):
+    @staticmethod
+    def gram_schmidt_columns(matrix):
+        """Takes a matrix, returns the matrix orthonormalized."""
         n = matrix.shape[1]
         for j in range(n):
             for k in range(j):
@@ -47,8 +62,11 @@ class CoordinatesCurves(Coordinates):
             matrix[:, j] = matrix[:, j] / np.linalg.norm(matrix[:, j])
         return matrix
 
-    def get_translational_coords(self, lambda_vec, middle_frame):
-        coor1, coor2, coor3 = ([] for i in range(3))
+    @staticmethod
+    def get_translational_coords(lambda_vec, middle_frame):
+        """Takes an array of displacement vectors between frame origins and an array of middle frames.
+        Returns three arrays of translational coordinates."""
+        coor1, coor2, coor3 = [], [], []
 
         for vec, matrix in zip(lambda_vec, middle_frame):
             x, y, z = np.dot(vec, matrix)
@@ -58,8 +76,11 @@ class CoordinatesCurves(Coordinates):
 
         return coor1, coor2, coor3
 
-    def get_rotational_coords(self, theta, unit_vector, middle_frame):
-        coor1, coor2, coor3 = ([] for i in range(3))
+    @staticmethod
+    def get_rotational_coords(theta, unit_vector, middle_frame):
+        """Takes arrays of rotation angle, rotation vectors and middle frames.
+        Returns three arrays of rotational coordinates."""
+        coor1, coor2, coor3 = [], [], []
 
         for angle_t, u_vector, mid_frame in zip(theta, unit_vector, middle_frame):
             x, y, z = np.dot([angle_t * u for u in u_vector], mid_frame)
@@ -69,7 +90,10 @@ class CoordinatesCurves(Coordinates):
 
         return coor1, coor2, coor3
 
-    def get_middle_frames(self, frames_1, frames_2, origins_1, origins_2):
+    @staticmethod
+    def get_middle_frames(frames_1, frames_2, origins_1, origins_2):
+        """Takes arrays of frames in two strands and their reference points.
+        Returns an array of middle frames and their reference points."""
         middle_frames = [
             (frame1 + frame2) / 2 for frame1, frame2 in zip(frames_1, frames_2)
         ]
@@ -77,33 +101,33 @@ class CoordinatesCurves(Coordinates):
             (origin1 + origin2) / 2 for origin1, origin2 in zip(origins_1, origins_2)
         ]
         middle_frames = [mf / np.linalg.norm(mf) for mf in middle_frames]
-        middle_frames = [self.gram_schmidt_columns(mf) for mf in middle_frames]
+        middle_frames = [CoordinatesCurves.gram_schmidt_columns(mf) for mf in middle_frames]
 
         return middle_frames, origins_middle_frames
 
     def get_intra_coords(self):
-        intra_rotation_matrices = self.get_rotation_matrices(
+        """Computes the base frame coordinates."""
+        intra_rotation_matrices = CoordinatesCurves.get_rotation_matrices(
             self.frames_1, self.frames_2
         )
         theta_a = self.get_theta(intra_rotation_matrices)
         lambda_a = [(x2 - x1) for x1, x2 in zip(self.origins_1, self.origins_2)]
-        w = self.get_eigenvectors_nonsymmetric(intra_rotation_matrices)
+        w = CoordinatesCurves.get_eigenvectors_nonsymmetric(intra_rotation_matrices)
         unit_rotation_vector_a = [[v / np.linalg.norm(vec) for v in vec] for vec in w]
-        shear, stagger, stretch = self.get_translational_coords(
+        self.shear, self.stagger, self.stretch = CoordinatesCurves.get_translational_coords(
             lambda_a, self.intra_middle_frames
         )
-        propeller, buckle, opening = self.get_rotational_coords(
+        self.propeller, self.buckle, self.opening = CoordinatesCurves.get_rotational_coords(
             theta_a, unit_rotation_vector_a, self.intra_middle_frames
         )
 
-        return shear, stagger, stretch, propeller, buckle, opening
-
     def get_inter_coords(self):
-        inter_rotation_matrices = self.get_rotation_matrices(
+        """Computes the base pair frames coordinates."""
+        inter_rotation_matrices = CoordinatesCurves.get_rotation_matrices(
             self.intra_middle_frames, self.intra_middle_frames[1:]
         )
         theta_e = self.get_theta(inter_rotation_matrices)
-        w_e = self.get_eigenvectors_nonsymmetric(inter_rotation_matrices)
+        w_e = CoordinatesCurves.get_eigenvectors_nonsymmetric(inter_rotation_matrices)
         unit_rotation_vector_e = [[v / np.linalg.norm(vec) for v in vec] for vec in w_e]
         lambda_e = [
             (x2 - x1)
@@ -111,49 +135,34 @@ class CoordinatesCurves(Coordinates):
                 self.intra_middle_frames_origins, self.intra_middle_frames_origins[1:]
             )
         ]
-        shift, slide, rise = self.get_translational_coords(
+        self.shift, self.slide, self.rise = CoordinatesCurves.get_translational_coords(
             lambda_e, self.inter_middle_frames
         )
-        roll, tilt, twist = self.get_rotational_coords(
+        self.roll, self.tilt, self.twist = CoordinatesCurves.get_rotational_coords(
             theta_e, unit_rotation_vector_e, self.inter_middle_frames
         )
 
-        return shift, slide, rise, roll, tilt, twist
-
     def run(self):
+        """Compute the internal coordinates."""
         # intra
         (
             self.intra_middle_frames,
             self.intra_middle_frames_origins,
-        ) = self.get_middle_frames(
+        ) = CoordinatesCurves.get_middle_frames(
             self.frames_1, self.frames_2, self.origins_1, self.origins_2
         )
 
-        (
-            self.shear,
-            self.stretch,
-            self.stagger,
-            self.buckle,
-            self.propeller,
-            self.opening,
-        ) = self.get_intra_coords()
+        self.get_intra_coords()
 
         # inter
         (
             self.inter_middle_frames,
             self.inter_middle_frames_origins,
-        ) = self.get_middle_frames(
+        ) = CoordinatesCurves.get_middle_frames(
             self.intra_middle_frames,
             self.intra_middle_frames[1:],
             self.intra_middle_frames_origins,
             self.intra_middle_frames_origins[1:],
         )
 
-        (
-            self.shift,
-            self.slide,
-            self.rise,
-            self.tilt,
-            self.roll,
-            self.twist,
-        ) = self.get_inter_coords()
+        self.get_inter_coords()
