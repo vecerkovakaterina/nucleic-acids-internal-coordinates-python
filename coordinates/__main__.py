@@ -6,9 +6,9 @@ from coordinates.coordinatesCurves import CoordinatesCurves
 from coordinates.frameFitter import FrameFitter
 
 
-# todo komentare
-
-def attach_number_to_input_filename(ctx, param, value):
+def attach_number_to_input_filename(value):
+    """Callback function takes value of input file path
+    and appends 1 before checking if path exists."""
     if value is not None:
         value += str(1)
     return value
@@ -26,6 +26,9 @@ def attach_number_to_input_filename(ctx, param, value):
               help='Path to output file.')
 @click.option('-n', '--number-of-snapshots', required=True, type=int, help='Number of snapshots to be processed.')
 def compute_coordinates(coords_type, input_file, output_file, number_of_snapshots):
+    """Takes the command lien arguments coordinate type, input file path,
+    output files path and number of snapshots to be processed.
+    Computes the internal coordinates according to definition type selected."""
     input_file = input_file[:-1]
     for i in range(1, number_of_snapshots + 1):
         ff = FrameFitter()
