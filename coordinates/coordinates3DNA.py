@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pandas as pd
 
-# todo opravit for in range na enumerate nebo zip
+
 class Coordinates3DNA(Coordinates):
 
     def get_hinge_axis_array(self):
@@ -14,7 +14,6 @@ class Coordinates3DNA(Coordinates):
             axis_array[i] = axis_normalized
         return axis_array
 
-    # col 0=x, 1=y, 2=z
     def get_angle_array(self, col):
         angle_array = np.zeros(shape=self.intra_len)
         for i in range(self.intra_len):
@@ -24,7 +23,8 @@ class Coordinates3DNA(Coordinates):
             angle_array[i] = angle
         return angle_array
 
-    def create_rotation_matrix(self, angle, hinge_axis):
+    @staticmethod
+    def create_rotation_matrix(angle, hinge_axis):
         r = pd.DataFrame([
             [math.cos(math.radians(angle)) + (1 - math.cos(math.radians(angle))) * (hinge_axis[0] ** 2),
              (1 - math.cos(math.radians(angle))) * hinge_axis[0] * hinge_axis[1] - hinge_axis[2] * math.sin(
@@ -86,7 +86,8 @@ class Coordinates3DNA(Coordinates):
             angle_array[i] = angle * np.sign(opening_sign)
         return angle_array
 
-    def get_phase_angle_array(self, hinge_axis_array, middle_frames):
+    @staticmethod
+    def get_phase_angle_array(hinge_axis_array, middle_frames):
         angle_array = np.zeros(shape=len(hinge_axis_array))
         for i in range(len(hinge_axis_array)):
             angle = np.dot(hinge_axis_array[i], middle_frames[i].T[1]) / (
@@ -98,7 +99,8 @@ class Coordinates3DNA(Coordinates):
             angle_array[i] = angle * np.sign(angle_sign)
         return angle_array
 
-    def get_rotational_coordinates_array(self, angle, phase_angle):
+    @staticmethod
+    def get_rotational_coordinates_array(angle, phase_angle):
         coordinates_array = np.zeros(shape=(len(angle), 2))
         for i in range(len(angle)):
             coordinates = [angle[i] * math.cos(np.radians(phase_angle[i])),
@@ -139,25 +141,30 @@ class Coordinates3DNA(Coordinates):
         angle_array = np.zeros(shape=self.inter_len)
         for i in range(self.inter_len):
             angle = np.dot(self.intra_middle_frames[i].T[col], self.intra_middle_frames[i + 1].T[col]) / (
-                    np.linalg.norm(self.intra_middle_frames[i].T[col]) * np.linalg.norm(
-                self.intra_middle_frames[i + 1].T[col]))
+                    np.linalg.norm(self.intra_middle_frames[i].T[col]) *
+                    np.linalg.norm(self.intra_middle_frames[i + 1].T[col]))
             angle = np.degrees(np.arccos(angle))
             angle_array[i] = angle
         return angle_array
 
+    def rotate_basepair_frames(self, angle, axis, index):
+        r1_matrix = self.create_rotation_matrix(angle * 0.5, axis)
+        rotated_frame_1 = np.matmul(r1_matrix, self.intra_middle_frames[index])
+        r2_matrix = self.create_rotation_matrix((angle * (-0.5)), axis)
+        rotated_frame_2 = np.matmul(r2_matrix, self.intra_middle_frames[index + 1])
+
+        return rotated_frame_1, rotated_frame_2
+
     def get_middle_basepair_frames(self, angle_array, hinge_axes_array):
         for i in range(self.inter_len):
-            r1_matrix = self.create_rotation_matrix(angle_array[i] * 0.5, hinge_axes_array[i])
-            rotated_frame_1 = np.matmul(r1_matrix, self.intra_middle_frames[i])
-            r2_matrix = self.create_rotation_matrix((angle_array[i] * (-0.5)), hinge_axes_array[i])
-            rotated_frame_2 = np.matmul(r2_matrix, self.intra_middle_frames[i + 1])
+            rotated_frame_1, rotated_frame_2 = self.rotate_basepair_frames(angle_array[i], hinge_axes_array[i], i)
 
             self.inter_middle_frames.append(np.mean([rotated_frame_1, rotated_frame_2], axis=0))
 
     def get_middle_basepair_frames_origins(self):
         for i in range(self.inter_len):
             self.inter_middle_frames_origins.append(np.mean([self.intra_middle_frames_origins[i],
-                                                           self.intra_middle_frames_origins[i + 1]], axis=0))
+                                                             self.intra_middle_frames_origins[i + 1]], axis=0))
 
     def get_basepair_translational_coordinates(self):
         coordinates = np.zeros(shape=(self.inter_len, 3))
@@ -170,10 +177,7 @@ class Coordinates3DNA(Coordinates):
     def get_twist_angle_array(self, angle_array, hinge_axes_array):
         twist_angles_array = np.zeros(shape=self.inter_len)
         for i in range(self.inter_len):
-            r1_matrix = self.create_rotation_matrix(angle_array[i] * 0.5, hinge_axes_array[i])
-            rotated_frame_1 = np.matmul(r1_matrix, self.intra_middle_frames[i])
-            r2_matrix = self.create_rotation_matrix((angle_array[i] * (-0.5)), hinge_axes_array[i])
-            rotated_frame_2 = np.matmul(r2_matrix, self.intra_middle_frames[i + 1])
+            rotated_frame_1, rotated_frame_2 = self.rotate_basepair_frames(angle_array[i], hinge_axes_array[i], i)
             twist_angle = np.dot(rotated_frame_1[1], rotated_frame_2[1]) / (
                     np.linalg.norm(rotated_frame_1[1]) * np.linalg.norm(rotated_frame_2[1]))
             twist_sign = np.dot(np.cross(rotated_frame_1[1], rotated_frame_2[1]), self.inter_middle_frames[i].T[2])
