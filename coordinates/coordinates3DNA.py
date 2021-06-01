@@ -5,8 +5,10 @@ import pandas as pd
 
 
 class Coordinates3DNA(Coordinates):
+    """A class to represent internal coordinates according to the 3DNA definition."""
 
     def get_hinge_axis_array(self):
+        """Returns an array of hinge axes."""
         axis_array = np.zeros(shape=(self.intra_len, 3))
         for i in range(self.intra_len):
             axis = np.cross(self.frames_1[i].T[2], self.frames_2[i].T[2])
@@ -15,6 +17,7 @@ class Coordinates3DNA(Coordinates):
         return axis_array
 
     def get_angle_array(self, col):
+        """Takes an index of a frame column and returns an array of rotation angles."""
         angle_array = np.zeros(shape=self.intra_len)
         for i in range(self.intra_len):
             angle = np.dot(self.frames_1[i].T[col], self.frames_2[i].T[col]) / (
@@ -25,6 +28,7 @@ class Coordinates3DNA(Coordinates):
 
     @staticmethod
     def create_rotation_matrix(angle, hinge_axis):
+        """Takes an array of rotation angles and hinge axes and returns a rotation matrix."""
         r = pd.DataFrame([
             [math.cos(math.radians(angle)) + (1 - math.cos(math.radians(angle))) * (hinge_axis[0] ** 2),
              (1 - math.cos(math.radians(angle))) * hinge_axis[0] * hinge_axis[1] - hinge_axis[2] * math.sin(
@@ -44,30 +48,37 @@ class Coordinates3DNA(Coordinates):
         ])
         return r
 
-    def get_rotation_matrix_array(self, multiply, axis_array, angle_array):
+    @staticmethod
+    def get_rotation_matrix_array(multiply, axis_array, angle_array):
+        """Takes an array of multiples, rotation angles and hinge axes."""
         rotation_matrices = np.zeros(shape=(len(axis_array), 3, 3))
         for i in range(len(axis_array)):
-            r_matrix = self.create_rotation_matrix(angle_array[i] * multiply, axis_array[i])
+            r_matrix = Coordinates3DNA.create_rotation_matrix(angle_array[i] * multiply, axis_array[i])
             rotation_matrices[i] = r_matrix
         return rotation_matrices
 
     def rotate_frames(self, strand, rotation_matrices):
+        """Takes an array of frames and rotation matrices.
+        Returns an array of the frames rotated."""
         rotated_matrices = np.zeros(shape=(self.intra_len, 3, 3))
         for i in range(len(strand)):
             rotated_matrices[i] = np.matmul(rotation_matrices[i], strand[i])
         return rotated_matrices
 
     def create_middle_frames_array(self, rotated_frames_1, rotated_frames_2):
+        """Takes two arrays of rotated frames and computes base frame middle frames."""
         self.intra_middle_frames = np.zeros(shape=(self.intra_len, 3, 3))
         for i in range(self.intra_len):
             self.intra_middle_frames[i] = np.mean([rotated_frames_1[i], rotated_frames_2[i]], axis=0)
 
     def create_middle_frames_origins_array(self):
+        """Computes reference points of the base frame middle frames."""
         self.intra_middle_frames_origins = np.zeros(shape=(self.intra_len, 3))
         for i in range(self.intra_len):
             self.intra_middle_frames_origins[i] = np.mean([self.origins_1[i], self.origins_2[i]], axis=0)
 
     def get_translational_coordinates(self):
+        """Returns an array of translational coordinates shear, stretch, stagger."""
         translational_coordinates = np.zeros(shape=(self.intra_len, 3))
         for i in range(self.intra_len):
             translational_coordinates[i] = np.matmul((self.origins_2[i] - self.origins_1[i]),
@@ -75,6 +86,8 @@ class Coordinates3DNA(Coordinates):
         return translational_coordinates
 
     def get_opening_angle_array(self, rotated_1, rotated_2):
+        """Takes two arrays of rotated frames.
+        Returns an array of opening angles."""
         angle_array = np.zeros(shape=self.intra_len)
         for i in range(self.intra_len):
             angle = np.dot(rotated_1[i].T[1], rotated_2[i].T[1]) / (
@@ -88,6 +101,8 @@ class Coordinates3DNA(Coordinates):
 
     @staticmethod
     def get_phase_angle_array(hinge_axis_array, middle_frames):
+        """Takes an array of hinge axes and middle frames.
+        Returns an array of rotation angles."""
         angle_array = np.zeros(shape=len(hinge_axis_array))
         for i in range(len(hinge_axis_array)):
             angle = np.dot(hinge_axis_array[i], middle_frames[i].T[1]) / (
@@ -101,6 +116,8 @@ class Coordinates3DNA(Coordinates):
 
     @staticmethod
     def get_rotational_coordinates_array(angle, phase_angle):
+        """Takes an array of rotation angles and phase angles.
+        Returns an array of rotational coordinates."""
         coordinates_array = np.zeros(shape=(len(angle), 2))
         for i in range(len(angle)):
             coordinates = [angle[i] * math.cos(np.radians(phase_angle[i])),
@@ -109,11 +126,13 @@ class Coordinates3DNA(Coordinates):
         return coordinates_array
 
     def compute_intra_coordinates(self):
+        """Compute the base frame coordinates."""
         hinge_axes = self.get_hinge_axis_array()
         buckle_propeller_angle_array = self.get_angle_array(2)
 
-        rotation_matrices_2 = self.get_rotation_matrix_array((-0.5), hinge_axes, buckle_propeller_angle_array)
-        rotation_matrices_1 = self.get_rotation_matrix_array(0.5, hinge_axes, buckle_propeller_angle_array)
+        rotation_matrices_2 = Coordinates3DNA.get_rotation_matrix_array((-0.5), hinge_axes,
+                                                                        buckle_propeller_angle_array)
+        rotation_matrices_1 = Coordinates3DNA.get_rotation_matrix_array(0.5, hinge_axes, buckle_propeller_angle_array)
 
         rotated_base_frames_strand_2 = self.rotate_frames(self.frames_2, rotation_matrices_2)
         rotated_base_frames_strand_1 = self.rotate_frames(self.frames_1, rotation_matrices_1)
@@ -124,12 +143,14 @@ class Coordinates3DNA(Coordinates):
         self.shear, self.stretch, self.stagger = np.transpose(self.get_translational_coordinates())
         self.opening = self.get_opening_angle_array(rotated_base_frames_strand_1, rotated_base_frames_strand_2)
 
-        phase_array_intra = self.get_phase_angle_array(hinge_axes, self.intra_middle_frames)
+        phase_array_intra = Coordinates3DNA.get_phase_angle_array(hinge_axes, self.intra_middle_frames)
 
-        self.propeller, self.buckle = np.transpose(self.get_rotational_coordinates_array(buckle_propeller_angle_array,
-                                                                                         phase_array_intra))
+        self.propeller, self.buckle = np.transpose(
+            Coordinates3DNA.get_rotational_coordinates_array(buckle_propeller_angle_array,
+                                                             phase_array_intra))
 
     def get_hinge_axes_array_inter(self):
+        """Returns an array of hinge axes for base pair frames."""
         hinge_axes_array = np.zeros(shape=(self.inter_len, 3))
         for i in range(self.inter_len):
             hinge_axis = np.cross(self.intra_middle_frames[i].T[2], self.intra_middle_frames[i + 1].T[2])
@@ -138,6 +159,7 @@ class Coordinates3DNA(Coordinates):
         return hinge_axes_array
 
     def get_angle_array_inter(self, col):
+        """Takes an index of frame columns and returns an array of rotation angles."""
         angle_array = np.zeros(shape=self.inter_len)
         for i in range(self.inter_len):
             angle = np.dot(self.intra_middle_frames[i].T[col], self.intra_middle_frames[i + 1].T[col]) / (
@@ -148,25 +170,31 @@ class Coordinates3DNA(Coordinates):
         return angle_array
 
     def rotate_basepair_frames(self, angle, axis, index):
-        r1_matrix = self.create_rotation_matrix(angle * 0.5, axis)
+        """Takes an arrays of rotation angles, hinge axes and index of middle frame.
+        Returns two consecutive base pair frames rotated."""
+        r1_matrix = Coordinates3DNA.create_rotation_matrix(angle * 0.5, axis)
         rotated_frame_1 = np.matmul(r1_matrix, self.intra_middle_frames[index])
-        r2_matrix = self.create_rotation_matrix((angle * (-0.5)), axis)
+        r2_matrix = Coordinates3DNA.create_rotation_matrix((angle * (-0.5)), axis)
         rotated_frame_2 = np.matmul(r2_matrix, self.intra_middle_frames[index + 1])
 
         return rotated_frame_1, rotated_frame_2
 
     def get_middle_basepair_frames(self, angle_array, hinge_axes_array):
+        """Takes an array of rotation angles and hinge axes.
+        Computes base pair middle frames."""
         for i in range(self.inter_len):
             rotated_frame_1, rotated_frame_2 = self.rotate_basepair_frames(angle_array[i], hinge_axes_array[i], i)
 
             self.inter_middle_frames.append(np.mean([rotated_frame_1, rotated_frame_2], axis=0))
 
     def get_middle_basepair_frames_origins(self):
+        """Computes reference points of base pair middle frames."""
         for i in range(self.inter_len):
             self.inter_middle_frames_origins.append(np.mean([self.intra_middle_frames_origins[i],
                                                              self.intra_middle_frames_origins[i + 1]], axis=0))
 
     def get_basepair_translational_coordinates(self):
+        """Returns the translational coordinates shift, slide, rise."""
         coordinates = np.zeros(shape=(self.inter_len, 3))
         for i in range(self.inter_len):
             coordinates[i] = np.matmul(
@@ -175,6 +203,8 @@ class Coordinates3DNA(Coordinates):
         return coordinates
 
     def get_twist_angle_array(self, angle_array, hinge_axes_array):
+        """Takes an array of rotation angle and hinge axes.
+        Returns an array of twist angles."""
         twist_angles_array = np.zeros(shape=self.inter_len)
         for i in range(self.inter_len):
             rotated_frame_1, rotated_frame_2 = self.rotate_basepair_frames(angle_array[i], hinge_axes_array[i], i)
@@ -186,6 +216,7 @@ class Coordinates3DNA(Coordinates):
         return twist_angles_array
 
     def compute_inter_coordinates(self):
+        """Compute the base pair frames coordinates."""
         hinge_axes = self.get_hinge_axes_array_inter()
         roll_tilt_angle_array = self.get_angle_array_inter(2)
         self.get_middle_basepair_frames(roll_tilt_angle_array, hinge_axes)
@@ -193,10 +224,11 @@ class Coordinates3DNA(Coordinates):
         self.shift, self.slide, self.rise = np.transpose(self.get_basepair_translational_coordinates())
 
         self.twist = self.get_twist_angle_array(roll_tilt_angle_array, hinge_axes)
-        phase_array_inter = self.get_phase_angle_array(hinge_axes, self.inter_middle_frames)
-        self.roll, self.tilt = np.transpose(self.get_rotational_coordinates_array(roll_tilt_angle_array,
-                                                                                  phase_array_inter))
+        phase_array_inter = Coordinates3DNA.get_phase_angle_array(hinge_axes, self.inter_middle_frames)
+        self.roll, self.tilt = np.transpose(Coordinates3DNA.get_rotational_coordinates_array(roll_tilt_angle_array,
+                                                                                             phase_array_inter))
 
     def run(self):
+        """Compute the internal coordinates."""
         self.compute_intra_coordinates()
         self.compute_inter_coordinates()
