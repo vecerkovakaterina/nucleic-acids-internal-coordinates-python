@@ -4,8 +4,10 @@ from functools import reduce
 
 
 class FrameFitter:
+    """A class to represent the reference frame fitting."""
 
     def __init__(self):
+        """Construct all the necessary attributes for the frame fitting procedure."""
         self.frames_1 = []
         self.frames_2 = []
         self.origins_1 = []
@@ -17,6 +19,7 @@ class FrameFitter:
         self.number_of_bases = 0
         self.strand_len = 0
 
+    # dict of relevant atoms in nucleotide bases
     ring_atoms = {'G': ['N9', 'C8', 'N7', 'C5', 'C6', 'N1', 'C2', 'N3', 'C4'],
                   'A': ['N9', 'C8', 'N7', 'C5', 'C6', 'N1', 'C2', 'N3', 'C4'],
                   'C': ['N1', 'C2', 'N3', 'C4', 'C5', 'C6'],
@@ -64,6 +67,7 @@ class FrameFitter:
     }
 
     def read_pdb(self, pdb_filename):
+        """Takes pdb file name and reads the experimental frames."""
         pdb = pd.read_csv(pdb_filename, delim_whitespace=True, header=None)
 
         # find bases
@@ -96,14 +100,19 @@ class FrameFitter:
         self.bases_2 = self.bases_2[::-1]
         self.experimental_2 = self.experimental_2[::-1]
 
-    # todo upravit funkce a objektove promenne
-    def get_covariance_matrix(self, standard, experimental, no_atoms):
+    @staticmethod
+    def get_covariance_matrix(standard, experimental, no_atoms):
+        """Takes a standard frame matrix, experimental frame matrix and number of relevant atoms in a base.
+        Returns the covariance matrix."""
         ones = np.ones(shape=(no_atoms, 1))
         cm = (1 / (no_atoms - 1)) * (reduce(np.matmul, [standard.T, experimental])
                                      - (1 / no_atoms) * reduce(np.matmul, [standard.T, ones, ones.T, experimental]))
         return cm
 
-    def get_symmetric_matrix(self, cm):
+    @staticmethod
+    def get_symmetric_matrix(cm):
+        """Takes the covariance matrix.
+        Returns the symmetric matrix."""
         sm = np.array([
             [cm[0, 0] + cm[1, 1] + cm[2, 2], cm[1, 2] - cm[2, 1], cm[2, 0] - cm[0, 2], cm[0, 1] - cm[1, 0]],
             [cm[1, 2] - cm[2, 1], cm[0, 0] - cm[1, 1] - cm[2, 2], cm[0, 1] + cm[1, 0], cm[2, 0] + cm[0, 2]],
@@ -112,7 +121,10 @@ class FrameFitter:
         ])
         return sm
 
-    def get_rotation_matrix(self, sm):
+    @staticmethod
+    def get_rotation_matrix(sm):
+        """Takes the symmetric matrix.
+        Returns the rotation matrix."""
         eigval = np.max(np.linalg.eigvals(sm))
         index = np.where(np.linalg.eigvals(sm) == eigval)
         eigvals, eigvecs = np.linalg.eig(sm)
@@ -130,45 +142,61 @@ class FrameFitter:
              eigenvec[0] ** 2 - eigenvec[1] ** 2 - eigenvec[2] ** 2 + eigenvec[3] ** 2]])
         return rm
 
-    def get_origin(self, rm, standard, experiment):
+    @staticmethod
+    def get_origin(rm, standard, experiment):
+        """Takes the rotation matrix, standard frame matrix and experimental frame matrix.
+        Returns the reference point of the fitted frame."""
         e_ave = experiment.mean(axis=0)
         s_ave = standard.mean(axis=0)
         o = e_ave - s_ave.dot(rm.T)
         return o
 
-    def get_fitted_coordinates(self, rm, standard, o):
+    @staticmethod
+    def get_fitted_coordinates(rm, standard, o):
+        """Takes the rotation matrix, the standard frame matrix and the reference point.
+        Returns the fitted coordinates."""
         fitted_coordinates = np.array([arr + o for arr in standard.dot(rm.T)])
         return fitted_coordinates
 
-    def get_matrices_and_no_atoms(self, exp_frames, std_frames, bases, index):
+    @staticmethod
+    def get_matrices_and_no_atoms(exp_frames, std_frames, bases, index):
+        """Takes the experimental frame array, the standard frames array, the base letter and index.
+        Returns the experimental frame matrix, the corresponding standard frame and number of atoms in frame."""
         exp_matrix = exp_frames[index].to_numpy()
         std_matrix = np.array(list(std_frames[bases[index]].values()))
         n = len(exp_frames[index].index)
         return exp_matrix, std_matrix, n
 
-    def get_frame_and_origin(self, standard_matrix, experimental_matrix, n):
-        covariance_matrix = self.get_covariance_matrix(standard_matrix, experimental_matrix, n)
-        symmetric_matrix = self.get_symmetric_matrix(covariance_matrix)
-        rotation_matrix = self.get_rotation_matrix(symmetric_matrix)
-        origin = self.get_origin(rotation_matrix, standard_matrix, experimental_matrix)
+    @staticmethod
+    def get_frame_and_origin(standard_matrix, experimental_matrix, n):
+        """Takes the standard frame matrix, the experimental frame matrix and the number of atoms.
+        Returns the rotation matrix and its reference point."""
+        covariance_matrix = FrameFitter.get_covariance_matrix(standard_matrix, experimental_matrix, n)
+        symmetric_matrix = FrameFitter.get_symmetric_matrix(covariance_matrix)
+        rotation_matrix = FrameFitter.get_rotation_matrix(symmetric_matrix)
+        origin = FrameFitter.get_origin(rotation_matrix, standard_matrix, experimental_matrix)
         return rotation_matrix, origin
 
     def get_frames_and_origins(self):
+        """Computes the fitted frames."""
         for i in range(0, self.strand_len):
-            exp_matrix_1, std_matrix_1, n_1 = self.get_matrices_and_no_atoms(self.experimental_1, self.standard_frames,
-                                                                             self.bases_1, i)
-            exp_matrix_2, std_matrix_2, n_2 = self.get_matrices_and_no_atoms(self.experimental_2, self.standard_frames,
-                                                                             self.bases_2, i)
+            exp_matrix_1, std_matrix_1, n_1 = FrameFitter.get_matrices_and_no_atoms(self.experimental_1,
+                                                                                    self.standard_frames,
+                                                                                    self.bases_1, i)
+            exp_matrix_2, std_matrix_2, n_2 = FrameFitter.get_matrices_and_no_atoms(self.experimental_2,
+                                                                                    self.standard_frames,
+                                                                                    self.bases_2, i)
 
-            frame_1, origin_1 = self.get_frame_and_origin(std_matrix_1, exp_matrix_1, n_1)
+            frame_1, origin_1 = FrameFitter.get_frame_and_origin(std_matrix_1, exp_matrix_1, n_1)
             self.frames_1.append(frame_1)
             self.origins_1.append(origin_1)
 
-            frame_2, origin_2 = self.get_frame_and_origin(std_matrix_2, exp_matrix_2, n_2)
+            frame_2, origin_2 = FrameFitter.get_frame_and_origin(std_matrix_2, exp_matrix_2, n_2)
             self.frames_2.append(frame_2)
             self.origins_2.append(origin_2)
 
     def rotate_strand_2(self):
+        """Rotates frame in strand 2 180 degrees around x-axis."""
         x_rot = np.array([
             [1, 0, 0],
             [0, -1, 0],
@@ -176,8 +204,8 @@ class FrameFitter:
         ])
         self.frames_2 = [np.matmul(frame, x_rot) for frame in self.frames_2]
 
-    # todo udelat static
     def run(self, pdb_filename):
+        """Computes the fitted frames in both strands."""
         self.read_pdb(pdb_filename)
         self.get_frames_and_origins()
         self.rotate_strand_2()
