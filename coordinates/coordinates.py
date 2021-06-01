@@ -7,7 +7,10 @@ def round_array_to_2_decimals(array):
 
 
 class Coordinates(ABC):
+    """A class to represent internal coordinates."""
+
     def __init__(self, frames_1, frames_2, origins_1, origins_2, strand_len):
+        """Constructs all the necessary attributes for the coordinates object."""
         self.frames_1 = frames_2
         self.frames_2 = frames_1
         self.origins_1 = origins_2
@@ -49,29 +52,25 @@ class Coordinates(ABC):
         self.tilt = round_array_to_2_decimals(self.tilt)
         self.twist = round_array_to_2_decimals(self.twist)
 
+    @staticmethod
+    def append_to_file(filename, array):
+        try:
+            file = open(filename, 'a+')
+            line_to_append = '\t'.join(map(str, array))
+            file.write(line_to_append + '\n')
+            file.close()
+        except IOError:
+            print("Output file path does not exist!")
+
     def write_to_bp_output_files(self, output_filepath):
         for i in range(0, self.intra_len):
             output_filepath_name = output_filepath + "_bp_prm_" + str(i + 1) + ".out"
-            try:
-                file = open(output_filepath_name, 'a+')
-                bp_array = [self.shear[i], self.stretch[i], self.stagger[i], self.buckle[i],
-                            self.propeller[i], self.opening[i]]
-                line_to_append = '\t'.join(map(str, bp_array))
-                file.write(line_to_append + '\n')
-            except IOError:
-                print("Output file path does not exist!")
-            finally:
-                file.close()
+            bp_array = [self.shear[i], self.stretch[i], self.stagger[i], self.buckle[i], self.propeller[i],
+                        self.opening[i]]
+            Coordinates.append_to_file(output_filepath_name, bp_array)
 
     def write_to_bp_step_output_files(self, output_filepath):
         for i in range(0, self.inter_len):
             output_filepath_name = output_filepath + "_bp_step_" + str(i + 1) + ".out"
-            try:
-                file = open(output_filepath_name, 'a+')
-                bp_step_array = [self.shift[i], self.slide[i], self.rise[i], self.roll[i], self.tilt[i], self.twist[i]]
-                line_to_append = '\t'.join(map(str, bp_step_array))
-                file.write(line_to_append + '\n')
-            except IOError:
-                print("Output file path does not exist!")
-            finally:
-                file.close()
+            bp_step_array = [self.shift[i], self.slide[i], self.rise[i], self.roll[i], self.tilt[i], self.twist[i]]
+            Coordinates.append_to_file(output_filepath_name, bp_step_array)
