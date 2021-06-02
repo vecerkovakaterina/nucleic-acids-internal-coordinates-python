@@ -8,7 +8,7 @@ from coordinates.frameFitter import FrameFitter
 
 def attach_number_to_input_filename(ctx, param, value):
     """Callback function takes value of input file path
-    and appends 1 before checking if path exists."""
+    and appends 1 before checking if the path exists."""
     if value is not None:
         value += str(1)
     return value
