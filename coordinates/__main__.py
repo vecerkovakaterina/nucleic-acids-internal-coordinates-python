@@ -26,7 +26,7 @@ def attach_number_to_input_filename(ctx, param, value):
               help='Path to output file.')
 @click.option('-n', '--number-of-snapshots', required=True, type=int, help='Number of snapshots to be processed.')
 def compute_coordinates(coords_type, input_file, output_file, number_of_snapshots):
-    """Takes the command lien arguments coordinate type, input file path,
+    """Takes the command line arguments coordinate type, input file path,
     output files path and number of snapshots to be processed.
     Computes the internal coordinates according to definition type selected."""
     input_file = input_file[:-1]
