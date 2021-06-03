@@ -43,9 +43,3 @@ would compute base and base step coordinates according to the 3DNA definition fo
 # Output files
 The output files are created for base and base step coordinates separately. For base coordinates, each base pair in the simulated oligomer will have its own output file, where tab separated columns represent *shear, stretch, stagger, buckle, propeller and opening* and rows represent its coordinates through the snapshots. The same goes for base step coordinates, each pair of base pairs will have its own file with columns *shift, slide, rise, roll, tilt, twist* and rows with coordinates for every snapshot. In the example above for an oligomer of length 5 with 10 snapshots the output files created are coordiantes_base_prm_1.out through coordiantes_base_prm_5.out each with 10 rows and coordinates_base_step_1.out through coordinates_base_step_4.out also with 10 rows.
 
-```mermaid
-graph TD
-A(Coordinates) --> B(Coordinates3DNA)
-A --> C(CoordinatesCurves)
-C --> D(CoordinatesCgDNA)
-```
