@@ -63,6 +63,10 @@ class Coordinates(ABC):
             print("Output file path does not exist!")
 
     def write_to_bp_output_files(self, output_filepath):
+        """
+        Write intra-bp coordinates to output files.
+        :param output_filepath: output file dir and root name
+        """
         for i in range(0, self.intra_len):
             output_filepath_name = output_filepath + "_bp_" + str(i + 1) + ".out"
             bp_array = [self.shear[i], self.stretch[i], self.stagger[i], self.buckle[i], self.propeller[i],
@@ -70,7 +74,28 @@ class Coordinates(ABC):
             Coordinates.append_to_file(output_filepath_name, bp_array)
 
     def write_to_bp_step_output_files(self, output_filepath):
+        """
+        Write inter-bp coordinates to output files.
+        :param output_filepath: output file dir and root name
+        """
         for i in range(0, self.inter_len):
             output_filepath_name = output_filepath + "_step_" + str(i + 1) + ".out"
             bp_step_array = [self.shift[i], self.slide[i], self.rise[i], self.roll[i], self.tilt[i], self.twist[i]]
             Coordinates.append_to_file(output_filepath_name, bp_step_array)
+
+    def write_to_test_accuracy(self, output_filepath, pdb_number):
+        """
+        Write coordinates to output file for each PDB file separately.
+        Comparable to output from 3DNA bp_step.par.
+        For testing purposes.
+        :param output_filepath: output file fir and root name
+        :param pdb_number: Number of PDB file being processed
+        """
+        output_filepath_name = output_filepath + "_test_" + str(pdb_number) + ".out"
+        to_append = [self.shear[0], self.stretch[0], self.stagger[0], self.buckle[0], self.propeller[0],
+                    self.opening[0], 0.00, 0.00, 0.00, 0.00, 0.00, 0.00]
+        Coordinates.append_to_file(output_filepath_name, to_append)
+        for i in range(0, self.inter_len):
+            bp_step = [self.shear[i+1], self.stretch[i+1], self.stagger[i+1], self.buckle[i+1], self.propeller[i+1],
+                        self.opening[i+1], self.shift[i], self.slide[i], self.rise[i], self.roll[i], self.tilt[i], self.twist[i]]
+            Coordinates.append_to_file(output_filepath_name, bp_step)
