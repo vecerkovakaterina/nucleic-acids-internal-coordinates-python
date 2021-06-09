@@ -64,13 +64,13 @@ class Coordinates(ABC):
 
     def write_to_bp_output_files(self, output_filepath):
         for i in range(0, self.intra_len):
-            output_filepath_name = output_filepath + "_bp_prm_" + str(i + 1) + ".out"
+            output_filepath_name = output_filepath + "_bp_" + str(i + 1) + ".out"
             bp_array = [self.shear[i], self.stretch[i], self.stagger[i], self.buckle[i], self.propeller[i],
                         self.opening[i]]
             Coordinates.append_to_file(output_filepath_name, bp_array)
 
     def write_to_bp_step_output_files(self, output_filepath):
         for i in range(0, self.inter_len):
-            output_filepath_name = output_filepath + "_bp_step_" + str(i + 1) + ".out"
+            output_filepath_name = output_filepath + "_step_" + str(i + 1) + ".out"
             bp_step_array = [self.shift[i], self.slide[i], self.rise[i], self.roll[i], self.tilt[i], self.twist[i]]
             Coordinates.append_to_file(output_filepath_name, bp_step_array)
