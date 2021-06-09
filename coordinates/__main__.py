@@ -16,7 +16,7 @@ def attach_number_to_input_filename(ctx, param, value):
 
 @click.command()
 @click.option('-t', '--coords-type', required=True,
-              type=click.Choice(['3dna', 'curves', 'cgdna'], case_sensitive=False),
+              type=click.Choice(['3dna', 'curvesplus', 'cgdna'], case_sensitive=False),
               help='Type of coordinates definition.')
 @click.option('-i', '--input-file',
               callback=attach_number_to_input_filename, required=True, type=click.Path(),
@@ -35,7 +35,7 @@ def compute_coordinates(coords_type, input_file, output_file, number_of_snapshot
         ff.run(input_file + str(i))
         if coords_type == "3dna":
             coordinates = Coordinates3DNA(ff.frames_1, ff.frames_2, ff.origins_1, ff.origins_2, ff.strand_len)
-        elif coords_type == "curves":
+        elif coords_type == "curvesplus":
             coordinates = CoordinatesCurves(ff.frames_1, ff.frames_2, ff.origins_1, ff.origins_2, ff.strand_len)
         elif coords_type == "cgdna":
             coordinates = CoordinatesCgDNA(ff.frames_1, ff.frames_2, ff.origins_1, ff.origins_2, ff.strand_len)
