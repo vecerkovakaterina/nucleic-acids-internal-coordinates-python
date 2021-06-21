@@ -32,11 +32,11 @@ The usage of the module can be displayed using `--help`
 
 It is meant to be run as
 
-   $ python -m coordinates -t definitio_type -n number_of_pdb_files -i /input/path/filename -o /output/path/filename
+    $ python -m coordinates -t definitio_type -n number_of_pdb_files -i /input/path/filename -o /output/path/filename
 
 where input file name is a common name for a PDB files numbered 1 to n. And the output file name is a common name for the output files. For example
 
-   $ python -m coordinates -t 3dna -n 10 -i /my_dir/simulation -o /my_other_dir/coordinates
+    $ python -m coordinates -t 3dna -n 10 -i /my_dir/simulation -o /my_other_dir/coordinates
 
 would compute base and base step coordinates according to the 3DNA definition for PDB files named simulation.pdb.1 through simulation.pdb.10.
 
